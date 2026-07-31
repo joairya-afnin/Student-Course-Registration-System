@@ -57,30 +57,6 @@ if ($reg) {
     ");
 }
 
-if ($reg && $reg['registration_status'] == "Pending") {
-?>
-<div style="
-background:#fef3c7;
-border:2px solid #f59e0b;
-color:#92400e;
-padding:20px;
-margin:0 30px 30px;
-border-radius:12px;
-">
-
-<h2>⏳ Registration Submitted</h2>
-
-<p>Your registration has been submitted successfully.</p>
-
-<p>Please wait for the Academic Office to verify your payment and approve your registration.</p>
-
-<p><b>Status:</b> Pending Approval</p>
-
-</div>
-
-<?php
-exit();
-}
 
 $courses = mysqli_query($conn, "
 SELECT
@@ -477,6 +453,33 @@ line-height:1.5;
 </div>
 
 <?php
+if ($reg && $reg['registration_status'] == "Pending") {
+?>
+<div style="
+background:#fef3c7;
+border:2px solid #f59e0b;
+color:#92400e;
+padding:20px;
+margin:0 30px 30px;
+border-radius:12px;
+">
+
+<h2 style="margin-bottom:10px;">⏳ Registration Submitted</h2>
+
+<p>Your registration has been submitted successfully.</p>
+
+<p>Please wait for the Academic Office to verify your payment and approve your registration.</p>
+
+<p><b>Registration ID:</b> <?php echo $reg['registration_id']; ?></p>
+
+<p><b>Status:</b> Pending Approval</p>
+
+</div>
+<?php
+}
+?>
+
+<?php
 if ($reg && $reg['registration_status'] == "Rejected") {
 ?>
 <div style="
@@ -589,6 +592,13 @@ font-weight:bold;
 
 <?php
 exit();
+}
+?>
+
+<?php
+if ($reg && ($reg['registration_status'] == "Pending" || $reg['registration_status'] == "Approved")) {
+    echo "</div></div></body></html>";
+    exit();
 }
 ?>
 
@@ -784,7 +794,10 @@ Reset Selection
 
 <div class="note">
 
-Students cannot take a lab course without registering for its corresponding theory course.
+<p style="margin-bottom:8px;">
+<b>Note:</b> You must select a <strong>minimum of 12 credits</strong> and a maximum of <strong><?php echo $maxCredit; ?> credits</strong>.
+</p>
+
 
 </div>
 
@@ -865,6 +878,18 @@ document.getElementById("hiddenCredit").value = credits;
 document.getElementById("hiddenAmount").value = amount;
 
 }
+
+// PREVENT SUBMISSION IF CREDITS ARE LESS THAN 12
+document.querySelector('form').addEventListener('submit', function(e) {
+
+    let credits = parseFloat(document.getElementById("hiddenCredit").value) || 0;
+
+    if (credits < 12) {
+        e.preventDefault(); // Stop form from submitting
+        alert("Minimum credit requirement is 12. You have selected " + credits + " credits.");
+    }
+
+});
 
 </script>
 

@@ -18,7 +18,14 @@ $courses = $_POST['courses'];
 $totalCredit = (float)($_POST['total_credit'] ?? 0);
 $totalAmount = (float)($_POST['total_amount'] ?? 0);
 
-
+if ($totalCredit < 12.0)
+{
+    echo "<script>
+    alert('Registration failed. You must register for a minimum of 12 credits. You selected " . $totalCredit . " credits.');
+    window.location='registration.php';
+    </script>";
+    exit();
+}
 
 foreach($courses as $selectedCourse)
 {
