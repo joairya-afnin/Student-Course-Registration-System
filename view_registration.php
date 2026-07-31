@@ -584,22 +584,45 @@ Payment Information
 
 <div class="info-item">
 <span>Pay Order Code</span>
-<strong><?php echo $payment['pay_order_code']; ?></strong>
+<strong>
+<?php
+echo $payment ? $payment['pay_order_code'] : "Not Submitted";
+?>
+</strong>
 </div>
 
 <div class="info-item">
 <span>Transaction ID</span>
-<strong><?php echo $payment['transaction_id']; ?></strong>
+<strong>
+<?php
+echo $payment ? $payment['transaction_id'] : "Not Submitted";
+?>
+</strong>
 </div>
 
 <div class="info-item">
 <span>Amount</span>
-<strong>BDT <?php echo number_format($payment['amount']); ?></strong>
+<strong>
+<?php
+if($payment)
+{
+    echo "BDT ".number_format($payment['amount']);
+}
+else
+{
+    echo "-";
+}
+?>
+</strong>
 </div>
 
 <div class="info-item">
 <span>Payment Date</span>
-<strong><?php echo $payment['payment_date']; ?></strong>
+<strong>
+<?php
+echo $payment ? $payment['payment_date'] : "-";
+?>
+</strong>
 </div>
 
 <div class="info-item">
@@ -609,23 +632,26 @@ Payment Information
 
 <?php
 
-if($payment['verification_status']=="Verified")
+if(!$payment)
 {
-echo "<span class='badge badge-approved'>Verified</span>";
+    echo "<span class='badge badge-pending'>Not Submitted</span>";
+}
+else if($payment['verification_status']=="Verified")
+{
+    echo "<span class='badge badge-approved'>Verified</span>";
 }
 else if($payment['verification_status']=="Rejected")
 {
-echo "<span class='badge badge-rejected'>Rejected</span>";
+    echo "<span class='badge badge-rejected'>Rejected</span>";
 }
 else
 {
-echo "<span class='badge badge-pending'>Pending</span>";
+    echo "<span class='badge badge-pending'>Pending</span>";
 }
 
 ?>
 
 </strong>
-
 </div>
 
 </div>

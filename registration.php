@@ -2,67 +2,50 @@
 session_start();
 include("config.php");
 
-$id=$_SESSION['user'];
+$id = $_SESSION['user'];
 
-$sql="SELECT student.*,academic_info.*
+$sql = "SELECT student.*, academic_info.*
 FROM student
 JOIN academic_info
-ON student.student_id=academic_info.acd_student_id
-WHERE student.student_id='$id'";
+ON student.student_id = academic_info.acd_student_id
+WHERE student.student_id = '$id'";
 
-$result=mysqli_query($conn,$sql);
-$row=mysqli_fetch_assoc($result);
+$result = mysqli_query($conn, $sql);
+$row = mysqli_fetch_assoc($result);
 
 $currentSemester = $row['current_semester'];
-
 $lastGPA = $row['current_gpa'];
 
-if($currentSemester==1)
-{
-    $maxCredit=24;
-}
-else if($lastGPA>=3.75)
-{
-    $maxCredit=28;
-}
-else if($lastGPA>=3.50)
-{
-    $maxCredit=26;
-}
-else if($lastGPA>=2.75)
-{
-    $maxCredit=24;
-}
-else if($lastGPA>=2.25)
-{
-    $maxCredit=22;
-}
-else if($lastGPA>=2.00)
-{
-    $maxCredit=20;
-}
-else if($lastGPA>=1.70)
-{
-    $maxCredit=15;
-}
-else
-{
-    $maxCredit=12;
+if ($currentSemester == 1) {
+    $maxCredit = 24;
+} else if ($lastGPA >= 3.75) {
+    $maxCredit = 28;
+} else if ($lastGPA >= 3.50) {
+    $maxCredit = 26;
+} else if ($lastGPA >= 2.75) {
+    $maxCredit = 24;
+} else if ($lastGPA >= 2.25) {
+    $maxCredit = 22;
+} else if ($lastGPA >= 2.00) {
+    $maxCredit = 20;
+} else if ($lastGPA >= 1.70) {
+    $maxCredit = 15;
+} else {
+    $maxCredit = 12;
 }
 
-$registration = mysqli_query($conn,"
+$registration = mysqli_query($conn, "
 SELECT *
 FROM registration
-WHERE student_id='$id'
+WHERE student_id = '$id'
 ORDER BY registration_date DESC
 LIMIT 1
 ");
 
 $reg = mysqli_fetch_assoc($registration);
 
-if($reg)
-{
-    $registeredCourses = mysqli_query($conn,"
+if ($reg) {
+    $registeredCourses = mysqli_query($conn, "
     SELECT
     course.course_code,
     course.course_title,
@@ -70,12 +53,11 @@ if($reg)
     FROM registration_course
     JOIN course
     ON registration_course.course_code = course.course_code
-    WHERE registration_course.registration_id='".$reg['registration_id']."'
+    WHERE registration_course.registration_id = '" . $reg['registration_id'] . "'
     ");
 }
 
-if($reg && $reg['registration_status']=="Pending")
-{
+if ($reg && $reg['registration_status'] == "Pending") {
 ?>
 <div style="
 background:#fef3c7;
@@ -100,16 +82,48 @@ border-radius:12px;
 exit();
 }
 
-$courses = mysqli_query($conn,"
-SELECT *
+$courses = mysqli_query($conn, "
+SELECT
+course.*,
+
+CASE
+WHEN result.grade = 'F' THEN 'Retake'
+WHEN result.grade_point <= 2.75 THEN 'Improvement'
+ELSE 'Regular'
+END AS course_type,
+
+CASE
+WHEN result.grade = 'F'
+OR result.grade_point <= 2.75
+THEN COALESCE(course.course_fee, 0)/2
+ELSE COALESCE(course.course_fee, 0)
+END AS display_fee
+
 FROM course
-WHERE course_code NOT IN
+
+LEFT JOIN result
+ON result.result_id =
 (
-    SELECT course_code
-    FROM result
-    WHERE student_id='$id'
-    AND grade_point >= 2.75
-)");
+SELECT MAX(r2.result_id)
+FROM result r2
+WHERE r2.student_id='$id'
+AND r2.course_code=course.course_code
+)
+
+WHERE
+result.course_code IS NULL
+OR result.grade = 'F'
+OR result.grade_point <= 2.75
+
+ORDER BY
+
+CASE
+WHEN result.course_code IS NULL THEN 1
+ELSE 2
+END,
+
+course.course_code
+");
 ?>
 
 <!DOCTYPE html>
@@ -463,8 +477,30 @@ line-height:1.5;
 </div>
 
 <?php
-if($reg && $reg['registration_status']=="Approved")
-{
+if ($reg && $reg['registration_status'] == "Rejected") {
+?>
+<div style="
+background:#fee2e2;
+border:2px solid #dc2626;
+color:#991b1b;
+padding:20px;
+margin:0 30px 30px;
+border-radius:12px;
+">
+
+<h2>❌ Registration Rejected</h2>
+
+<p>Your previous registration request has been rejected by the Academic Office.</p>
+
+<p>You may select courses again and submit a new registration.</p>
+
+</div>
+<?php
+}
+?>
+
+<?php
+if ($reg && $reg['registration_status'] == "Approved") {
 ?>
 <div style="
 background:#dcfce7;
@@ -510,8 +546,7 @@ overflow:hidden;
 </tr>
 
 <?php
-while($c=mysqli_fetch_assoc($registeredCourses))
-{
+while ($c = mysqli_fetch_assoc($registeredCourses)) {
 ?>
 
 <tr>
@@ -584,28 +619,49 @@ exit();
 <tbody>
 
 <?php
-while($course=mysqli_fetch_assoc($courses))
-{
+while ($course = mysqli_fetch_assoc($courses)) {
 
-$disable="";
+    static $suggestionShown = false;
 
-if($course['prerequisite']!="")
-{
+    if (!$suggestionShown &&
+    ($course['course_type'] == "Retake" || $course['course_type'] == "Improvement")) {
+?>
+<tr>
+<td colspan="7"
+style="
+background:#fff3cd;
+font-weight:bold;
+color:#856404;
+padding:15px;
+font-size:16px;
+">
+Suggested for Improvement and Retake
+</td>
+</tr>
+<?php
+        $suggestionShown = true;
+    }
 
-$check=mysqli_query($conn,"
-SELECT *
-FROM result
-WHERE student_id='$id'
-AND course_code='".$course['prerequisite']."'
-AND grade<>'F'
-");
+    $disable = "";
+    $isDisabled = false;
 
-if(mysqli_num_rows($check)==0)
-{
-    $disable="disabled";
-}
+    // PREREQUISITE CHECK LOGIC
+    if (!empty($course['prerequisite'])) {
+        $prereqCode = $course['prerequisite'];
 
-}
+        $checkPrereq = mysqli_query($conn, "
+            SELECT grade_point 
+            FROM result 
+            WHERE student_id = '$id' 
+            AND course_code = '$prereqCode' 
+            AND grade_point >= 2.00
+        ");
+
+        if (mysqli_num_rows($checkPrereq) == 0) {
+            $disable = "disabled";
+            $isDisabled = true;
+        }
+    }
 ?>
 
 <tr>
@@ -618,21 +674,44 @@ class="course"
 name="courses[]"
 value="<?php echo $course['course_code'];?>"
 <?php echo $disable; ?>
-data-credit="<?php echo $course['credit'];?>"
-data-fee="<?php echo $course['course_fee'];?>"
-data-name="<?php echo $course['course_code'];?>">
+data-credit="<?php echo floatval($course['credit']);?>"
+data-fee="<?php echo floatval($course['display_fee']);?>"
+data-name="<?php echo $course['course_code'];?>"
+<?php if ($isDisabled) echo "style='cursor: not-allowed;'"; ?>>
 
 </td>
 
-<td><?php echo $course['course_code']; ?></td>
+<td <?php if ($isDisabled) echo "style='color:#aaa;'"; ?>><?php echo $course['course_code']; ?></td>
 
-<td><?php echo $course['course_title']; ?></td>
+<td <?php if ($isDisabled) echo "style='color:#aaa;'"; ?>><?php echo $course['course_title']; ?></td>
 
 <td><?php echo $course['credit']; ?></td>
 
-<td><?php echo $course['course_fee']; ?></td>
+<td>
 
-<td><?php echo $course['prerequisite']; ?></td>
+<?php
+if ($course['course_type'] == "Regular") {
+    echo number_format($course['display_fee'],0);
+} else {
+   echo "<span style='color:#16a34a;font-weight:bold;'>"
+. number_format($course['display_fee'],0)
+. " </span>";
+}
+?>
+
+</td>
+
+<td>
+<?php 
+if (!empty($course['prerequisite'])) {
+    if ($isDisabled) {
+        echo "<span style='color:#dc2626;font-weight:bold;'>" . $course['prerequisite'] . " (Not Cleared)</span>";
+    } else {
+        echo "<span style='color:#16a34a;'>" . $course['prerequisite'] . " (Passed)</span>";
+    }
+}
+?>
+</td>
 
 <td><?php echo $course['corequisite']; ?></td>
 
@@ -723,16 +802,16 @@ Students cannot take a lab course without registering for its corresponding theo
 
 <script>
 
-const checkboxes=document.querySelectorAll('.course');
+const checkboxes = document.querySelectorAll('.course');
 
-const totalCredits=document.getElementById('totalCredits');
-const totalAmount=document.getElementById('totalAmount');
-const courseCount=document.getElementById('courseCount');
-const selectedCourses=document.getElementById('selectedCourses');
+const totalCredits = document.getElementById('totalCredits');
+const totalAmount = document.getElementById('totalAmount');
+const courseCount = document.getElementById('courseCount');
+const selectedCourses = document.getElementById('selectedCourses');
 
 checkboxes.forEach(function(box){
 
-box.addEventListener("change",function(){
+box.addEventListener("change", function(){
 
 updateSummary.call(this);
 
@@ -742,23 +821,26 @@ updateSummary.call(this);
 
 function updateSummary(){
 
-let credits=0;
-let amount=0;
-let count=0;
+let credits = 0;
+let amount = 0;
+let count = 0;
 
-selectedCourses.innerHTML='';
+selectedCourses.innerHTML = '';
 
-checkboxes.forEach(box=>{
+checkboxes.forEach(box => {
 
-if(box.checked){
+if(box.checked && !box.disabled){
 
-credits += parseFloat(box.dataset.credit);
-amount += parseFloat(box.dataset.fee);
-count++;
+    let cCredit = parseFloat(box.dataset.credit) || 0;
+    let cFee = parseFloat(box.dataset.fee) || 0;
 
-let li=document.createElement('li');
-li.textContent=box.dataset.name;
-selectedCourses.appendChild(li);
+    credits += cCredit;
+    amount += cFee;
+    count++;
+
+    let li = document.createElement('li');
+    li.textContent = box.dataset.name;
+    selectedCourses.appendChild(li);
 
 }
 
@@ -768,7 +850,7 @@ if(credits > <?php echo $maxCredit; ?>)
 {
 alert("Maximum allowed credit is <?php echo $maxCredit; ?>");
 
-this.checked = false;
+if(this) this.checked = false;
 
 updateSummary();
 

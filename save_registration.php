@@ -14,8 +14,72 @@ if(!isset($_POST['courses']))
 }
 
 $courses = $_POST['courses'];
-$totalCredit = $_POST['total_credit'];
-$totalAmount = $_POST['total_amount'];
+
+$totalCredit = (float)($_POST['total_credit'] ?? 0);
+$totalAmount = (float)($_POST['total_amount'] ?? 0);
+
+
+
+foreach($courses as $selectedCourse)
+{
+    $query = mysqli_query($conn, "
+        SELECT prerequisite 
+        FROM course 
+        WHERE course_code='$selectedCourse'
+    ");
+
+    $courseRow = mysqli_fetch_assoc($query);
+
+    if(!empty($courseRow['prerequisite']))
+    {
+        $prereq = $courseRow['prerequisite'];
+
+        
+        $checkPrereq = mysqli_query($conn, "
+            SELECT grade_point 
+            FROM result 
+            WHERE student_id='$id' 
+            AND course_code='$prereq' 
+            AND grade_point >= 2.00
+        ");
+
+        if(mysqli_num_rows($checkPrereq) == 0)
+        {
+            echo "<script>
+            alert('Cannot register for ".$selectedCourse.". You have not passed its prerequisite course (".$prereq.").');
+            window.location='registration.php';
+            </script>";
+            exit();
+        }
+    }
+}
+
+
+
+foreach($courses as $selectedCourse)
+{
+    $query = mysqli_query($conn,"
+    SELECT corequisite
+    FROM course
+    WHERE course_code='$selectedCourse'
+    ");
+
+    $courseRow = mysqli_fetch_assoc($query);
+
+    if(!empty($courseRow['corequisite']))
+    {
+        $corequisite = $courseRow['corequisite'];
+
+        if(!in_array($corequisite, $courses))
+        {
+            echo "<script>
+            alert('".$selectedCourse." requires the corequisite course ".$corequisite.". Please select both courses.');
+            window.location='registration.php';
+            </script>";
+            exit();
+        }
+    }
+}
 
 $student = mysqli_query($conn,"
 SELECT current_semester
