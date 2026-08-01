@@ -41,6 +41,7 @@ FROM pay_order
 WHERE registration_id='$registration_id'
 "));
 
+
 // Registered Courses
 $courses = mysqli_query($conn,"
 SELECT course.course_code,

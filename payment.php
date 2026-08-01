@@ -7,14 +7,16 @@ $id = $_SESSION['user'];
 $student = mysqli_query($conn,"
 SELECT student.*, registration.*
 FROM student
-LEFT JOIN registration
+JOIN registration
 ON student.student_id = registration.student_id
 WHERE student.student_id='$id'
-ORDER BY registration.registration_date DESC
+AND registration.registration_status!='Rejected'
+ORDER BY registration.registration_id DESC
 LIMIT 1
 ");
 
 $row = mysqli_fetch_assoc($student);
+
 $payment = mysqli_query($conn,"
 SELECT *
 FROM pay_order
@@ -471,7 +473,7 @@ margin-bottom:20px;
 
 <?php
 }
-else
+else if(!$pay)
 {
 ?>
 
@@ -536,6 +538,25 @@ Submit Payment
 
 </form>
 
+<?php
+}
+?>
+
+<?php
+if($pay && $pay['verification_status']=="Pending")
+{
+?>
+<div style="
+background:#fff7ed;
+border:2px solid orange;
+padding:20px;
+border-radius:12px;
+margin-bottom:20px;
+">
+<h2>⏳ Payment Submitted</h2>
+<p>Your payment has been submitted successfully.</p>
+<p>Waiting for Academic Office verification.</p>
+</div>
 <?php
 }
 ?>

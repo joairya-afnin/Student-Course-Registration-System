@@ -34,11 +34,11 @@ if ($currentSemester == 1) {
     $maxCredit = 12;
 }
 
-$registration = mysqli_query($conn, "
+$registration = mysqli_query($conn,"
 SELECT *
 FROM registration
-WHERE student_id = '$id'
-ORDER BY registration_date DESC
+WHERE student_id='$id'
+ORDER BY registration_id DESC
 LIMIT 1
 ");
 

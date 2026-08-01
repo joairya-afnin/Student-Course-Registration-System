@@ -4,6 +4,22 @@ include("config.php");
 
 $id = $_SESSION['user'];
 
+$check = mysqli_query($conn,"
+SELECT *
+FROM registration
+WHERE student_id='$id'
+AND registration_status='Pending'
+");
+
+if(mysqli_num_rows($check)>0)
+{
+    echo "<script>
+    alert('You already have a pending registration.');
+    window.location='registration.php';
+    </script>";
+    exit();
+}
+
 if(!isset($_POST['courses']))
 {
     echo "<script>

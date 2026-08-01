@@ -15,6 +15,7 @@ $check=mysqli_query($conn,"
 SELECT *
 FROM pay_order
 WHERE registration_id='$registrationID'
+AND verification_status IN ('Pending','Verified')
 ");
 
 if(mysqli_num_rows($check)>0)
